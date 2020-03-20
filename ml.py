@@ -484,6 +484,7 @@ def readTreeFromFile():
             })
     for nodeChild in nodeChildren:
         nodes[nodeChild['parent']].addChildren(nodeChild['attributeVal'], nodes[nodeChild['child']])
+    oldFile.close()
     return nodes[0]
 
 
