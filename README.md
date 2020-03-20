@@ -1,2 +1,1 @@
-# machineLearningTubes
-Machine Learning Jangan Tubes gak usah Help
+# ID3 DTL & C4.5 DTL
