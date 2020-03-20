@@ -195,8 +195,13 @@ def getMostCommonValue(data, attribute):
 # }
 
 class Node:
+    #Static
+    globalId = 0
+    writableStringOfTree = ''
+
     def __init__(self, attributeName):
         self.attributeName = attributeName
+        self.id = -1
         self.label = True
         self.threshold = None
         self.children = []
@@ -218,6 +223,8 @@ class Node:
             print(self.attributeName)
         for i in range(0, level):
             print('        ', end = '')
+        if self.id != None:
+            print('ID:', self.id)
         print('Children count:', len(self.children))
         for i in range(0, level):
             print('        ', end = '')
@@ -227,6 +234,25 @@ class Node:
                 print('        ', end = '')
             print('If val: ', child['attributeVal'])
             child['nextNode'].describe(level + 1)
+    
+    def getWritableString(self):
+        writableString = ''
+        writableString += str(self.id)
+        writableString += ', ' + self.attributeName
+        writableString += ', ' + ('1' if self.label else '0')
+        writableString += ', ' + (str(self.threshold) if self.threshold != None else 'NONE')
+        writableString += ', ' + '['
+        for child in self.children:
+            writableString += str(child['attributeVal']) + ':' + str(child['nextNode'].id)
+            if child != self.children[-1]:
+                writableString += ' | '
+        writableString += ']'
+        return writableString
+    
+    def setWritableStringOfTree(self):
+        Node.writableStringOfTree += self.getWritableString() + '\n'
+        for child in self.children:
+            child['nextNode'].setWritableStringOfTree()
 
 def myID3(data, targetAttribute, node, gainRatio = False):
     enthropy = getEnthropy(data, targetAttribute)
@@ -420,3 +446,58 @@ def handleMissingAttribute(data, targetAttribute):
             for instance in dData[attribute]:
                 data[attribute].append(instance)
     return data
+
+def isInteger(s):
+    try: 
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def readTreeFromFile():
+    nodes = []
+    nodeChildren = []
+    oldFile = open('dtl.txt', 'r')
+    lines = oldFile.read().split('\n')
+    for line in lines:
+        if (line) == '':
+            break
+        explodedLine = line.split(', ')
+        id = int(explodedLine[0])
+        attribute = explodedLine[1]
+        isLabel = True if explodedLine[2] == '1' else False
+        treshold = float(explodedLine[3]) if explodedLine[3] != 'NONE' else None
+        newNode = Node(attribute)
+        newNode.id = id
+        newNode.label = isLabel
+        newNode.threshold = treshold
+        nodes.append(newNode)
+        explodedLine[4] = explodedLine[4][1:len(explodedLine[4])-1]
+        explodedChildren = explodedLine[4].split(' | ')
+        explodedChildren = explodedChildren if explodedChildren[0] != '' else []
+        for child in explodedChildren:
+            explodedChild = child.split(':')
+            nodeChildren.append({
+                'parent': id,
+                'attributeVal': int(explodedChild[0]) if isInteger(explodedChild[0]) else explodedChild[0],
+                'child': int(explodedChild[1])
+            })
+    for nodeChild in nodeChildren:
+        nodes[nodeChild['parent']].addChildren(nodeChild['attributeVal'], nodes[nodeChild['child']])
+    return nodes[0]
+
+
+def setID(node):
+    node.id = Node.globalId
+    Node.globalId += 1
+    for child in node.children:
+        setID(child['nextNode'])
+
+def saveTree(tree):
+    Node.globalId = 0
+    Node.writableStringOfTree = ''
+    setID(tree)
+    tree.setWritableStringOfTree()
+    newFile = open('dtl.txt', 'w+')
+    newFile.write(Node.writableStringOfTree)
+    newFile.close()
